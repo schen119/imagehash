@@ -154,7 +154,7 @@ def phash(image, hash_size=8, highfreq_factor=4):
 
 	Implementation follows http://www.hackerfactor.com/blog/index.php?/archives/432-Looks-Like-It.html
 
-	@image must be a PIL instance.
+	@image must be a PIL instance. ignoring the impact from Instagram-like vignetting (corner darkening)
 	"""
 	if hash_size < 2:
 		raise ValueError("Hash size must be greater than or equal to 2")
@@ -167,6 +167,35 @@ def phash(image, hash_size=8, highfreq_factor=4):
 	dctlowfreq = dct[:hash_size, :hash_size]
 	med = numpy.median(dctlowfreq)
 	diff = dctlowfreq > med
+	return ImageHash(diff)
+
+
+def phash_discard_corner(image, hash_size=8, highfreq_factor=4):
+	"""
+	Perceptual Hash computation.
+
+	Implementation follows http://www.hackerfactor.com/blog/index.php?/archives/432-Looks-Like-It.html
+
+	@image must be a PIL instance. ignoring the impact from Instagram-like vignetting (corner darkening)
+
+	discard_corner: Boolean,  ignoring the impact from Instagram-like vignetting (corner darkening)
+	"""
+	if hash_size < 2:
+		raise ValueError("Hash size must be greater than or equal to 2")
+
+	import scipy.fftpack
+	img_size = hash_size * highfreq_factor
+	image = image.convert("L").resize((img_size, img_size), Image.ANTIALIAS)
+	pixels = numpy.asarray(image)
+	dct = scipy.fftpack.dct(scipy.fftpack.dct(pixels, axis=0), axis=1)
+	dctlowfreq = dct[:hash_size, :hash_size]
+	med = numpy.median(dctlowfreq)
+	diff = dctlowfreq > med
+	# discard conrer
+	diff[0,0]= 0
+	diff[0,-1]= 0
+	diff[-1,-1]= 0
+	diff[-1,0]= 0
 	return ImageHash(diff)
 
 
